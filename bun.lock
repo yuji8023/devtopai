@@ -259,7 +259,7 @@
       "name": "opencode",
       "version": "1.1.39",
       "bin": {
-        "opencode": "./bin/opencode",
+        "slmapcode": "./bin/slmapcode",
       },
       "dependencies": {
         "@actions/core": "1.11.1",

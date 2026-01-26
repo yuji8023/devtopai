@@ -20,6 +20,7 @@ import { DialogAgent } from "@tui/component/dialog-agent"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
 import { DialogSLMAPLogin } from "@tui/component/dialog-slmap-login"
 import { DialogSLMAPProject } from "@tui/component/dialog-slmap-project"
+import { DialogSLMAPSpec } from "@tui/component/dialog-slmap-spec"
 import { KeybindProvider } from "@tui/context/keybind"
 import { ThemeProvider, useTheme } from "@tui/context/theme"
 import { Home } from "@tui/routes/home"
@@ -603,6 +604,17 @@ function App() {
         kv.set("diff_wrap_mode", current === "word" ? "none" : "word")
         dialog.clear()
       },
+    },
+    {
+      title: "SLMAP Spec",
+      value: "slmap.spec",
+      category: "System",
+      slash: {
+        name: "slmap-spec",
+      },
+      onSelect: () => {
+        dialog.replace(() => <DialogSLMAPSpec />)
+      }
     },
   ])
 

@@ -73,6 +73,27 @@ function findBinary(startDir) {
 
 const resolved = findBinary(scriptDir)
 if (!resolved) {
+  // Try development mode - look for src/index.ts
+  const packageDir = path.join(scriptDir, "..")
+  const devEntry = path.join(packageDir, "src", "index.ts")
+  if (fs.existsSync(devEntry)) {
+    // Try to find bun
+    const bunPath = process.platform === "win32" ? "bun.exe" : "bun"
+    const result = childProcess.spawnSync(
+      bunPath,
+      ["run", "--conditions=browser", devEntry, ...process.argv.slice(2)],
+      {
+        stdio: "inherit",
+        cwd: packageDir  // Run from package directory
+      }
+    )
+    if (result.error) {
+      console.error("Failed to run in development mode:", result.error.message)
+      process.exit(1)
+    }
+    process.exit(typeof result.status === "number" ? result.status : 0)
+  }
+
   console.error(
     'It seems that your package manager failed to install the right version of the opencode CLI for your platform. You can try manually installing the "' +
       base +
