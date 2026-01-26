@@ -18,6 +18,8 @@ import { DialogHelp } from "./ui/dialog-help"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
 import { DialogAgent } from "@tui/component/dialog-agent"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
+import { DialogSLMAPLogin } from "@tui/component/dialog-slmap-login"
+import { DialogSLMAPProject } from "@tui/component/dialog-slmap-project"
 import { KeybindProvider } from "@tui/context/keybind"
 import { ThemeProvider, useTheme } from "@tui/context/theme"
 import { Home } from "@tui/routes/home"
@@ -568,6 +570,28 @@ function App() {
       onSelect: (dialog) => {
         kv.set("animations_enabled", !kv.get("animations_enabled", true))
         dialog.clear()
+      }
+    },
+    {
+      title: "SLMAP Login",
+      value: "slmap.login",
+      category: "System",
+      slash: {
+        name: "login",
+      },
+      onSelect: () => {
+        dialog.replace(() => <DialogSLMAPLogin />)
+      },
+    },
+    {
+      title: "SLMAP Project",
+      value: "slmap.project",
+      category: "System",
+      slash: {
+        name: "slmap-project",
+      },
+      onSelect: () => {
+        dialog.replace(() => <DialogSLMAPProject />)
       },
     },
     {

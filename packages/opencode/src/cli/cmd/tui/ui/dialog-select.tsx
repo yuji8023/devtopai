@@ -3,7 +3,7 @@ import { useTheme, selectedForeground } from "@tui/context/theme"
 import { entries, filter, flatMap, groupBy, pipe, take } from "remeda"
 import { batch, createEffect, createMemo, For, Show, type JSX, on } from "solid-js"
 import { createStore } from "solid-js/store"
-import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
+import { useKeyboard, useTerminalDimensions, useRenderer } from "@opentui/solid"
 import * as fuzzysort from "fuzzysort"
 import { isDeepEqual } from "remeda"
 import { useDialog, type DialogContext } from "@tui/ui/dialog"
@@ -80,6 +80,22 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
     )
     if (!needle) return options
 
+    // Check if the search query contains Chinese characters (or other non-ASCII characters)
+    // Chinese characters are in the Unicode range \u4e00-\u9fff
+    const hasChinese = /[\u4e00-\u9fff]/.test(needle)
+
+    if (hasChinese) {
+      // Use simple substring matching for Chinese and other non-ASCII characters
+      // This provides better results than fuzzysort for these languages
+      return options.filter((option) => {
+        const titleMatch = option.title.toLowerCase().includes(needle)
+        const categoryMatch = option.category?.toLowerCase().includes(needle)
+        const descMatch = option.description?.toLowerCase().includes(needle)
+        return titleMatch || categoryMatch || descMatch
+      })
+    }
+
+    // For ASCII text, use fuzzysort for better fuzzy matching
     // prioritize title matches (weight: 2) over category matches (weight: 1).
     // users typically search by the item name, and not its category.
     const result = fuzzysort
@@ -174,8 +190,26 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   }
 
   const keybind = useKeybind()
+  const renderer = useRenderer()
+
   useKeyboard((evt) => {
-    setStore("input", "keyboard")
+    // Skip processing if the input is focused to allow IME composition
+    // This allows Chinese/Japanese/Korean input to work properly
+    if (renderer.currentFocusedRenderable === input) {
+      // Only process navigation keys when input is focused, not text input
+      const isNavigationKey = ["up", "down", "pageup", "pagedown", "home", "end", "return", "escape"].includes(evt.name)
+      if (!isNavigationKey) {
+        // Don't interfere with text input - let the input field handle it
+        // This is critical for IME composition (Chinese, Japanese, Korean, etc.)
+        return
+      }
+      // For navigation keys, prevent default to handle them ourselves
+      evt.preventDefault()
+      // Set input mode to keyboard
+      setStore("input", "keyboard")
+    } else {
+      setStore("input", "keyboard")
+    }
 
     if (evt.name === "up" || (evt.ctrl && evt.name === "p")) move(-1)
     if (evt.name === "down" || (evt.ctrl && evt.name === "n")) move(1)

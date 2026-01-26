@@ -1044,6 +1044,8 @@ export namespace Config {
           prune: z.boolean().optional().describe("Enable pruning of old tool outputs (default: true)"),
         })
         .optional(),
+      slmap_url: z.string().optional().describe("SLMAP server URL （服务器url，作用于全局）"),
+      slmap_token: z.string().optional().describe("SLMAP authentication token （登录令牌，作用于全局）"),
       experimental: z
         .object({
           hook: z
