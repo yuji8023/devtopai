@@ -17,7 +17,7 @@ function run(target) {
   process.exit(code)
 }
 
-const envPath = process.env.OPENCODE_BIN_PATH
+const envPath = process.env.SLMAPCODE_BIN_PATH
 if (envPath) {
   run(envPath)
 }
@@ -44,8 +44,8 @@ let arch = archMap[os.arch()]
 if (!arch) {
   arch = os.arch()
 }
-const base = "opencode-" + platform + "-" + arch
-const binary = platform === "windows" ? "opencode.exe" : "opencode"
+const base = "slmapcode-" + platform + "-" + arch
+const binary = platform === "windows" ? "slmapcode.exe" : "slmapcode"
 
 function findBinary(startDir) {
   let current = startDir
@@ -95,7 +95,7 @@ if (!resolved) {
   }
 
   console.error(
-    'It seems that your package manager failed to install the right version of the opencode CLI for your platform. You can try manually installing the "' +
+    'It seems that your package manager failed to install the right version of the slmapcode CLI for your platform. You can try manually installing the "' +
       base +
       '" package',
   )
