@@ -15,6 +15,7 @@ import { DialogMcp } from "@tui/component/dialog-mcp"
 import { DialogStatus } from "@tui/component/dialog-status"
 import { DialogThemeList } from "@tui/component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
+import { DialogAbout } from "./ui/dialog-about"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
 import { DialogAgent } from "@tui/component/dialog-agent"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
@@ -483,6 +484,17 @@ function App() {
       category: "System",
     },
     {
+      title: "About",
+      value: "about.show",
+      slash: {
+        name: "slmap:about",
+      },
+      onSelect: () => {
+        dialog.replace(() => <DialogAbout />)
+      },
+      category: "System",
+    },
+    {
       title: "Open docs",
       value: "docs.open",
       onSelect: () => {
@@ -578,7 +590,7 @@ function App() {
       value: "slmap.login",
       category: "System",
       slash: {
-        name: "login",
+        name: "slmap:login",
       },
       onSelect: () => {
         dialog.replace(() => <DialogSLMAPLogin />)
@@ -589,7 +601,7 @@ function App() {
       value: "slmap.project",
       category: "System",
       slash: {
-        name: "slmap-project",
+        name: "slmap:project",
       },
       onSelect: () => {
         dialog.replace(() => <DialogSLMAPProject />)
@@ -610,7 +622,7 @@ function App() {
       value: "slmap.spec",
       category: "System",
       slash: {
-        name: "slmap-spec",
+        name: "slmap:download-specs",
       },
       onSelect: () => {
         dialog.replace(() => <DialogSLMAPSpec />)
