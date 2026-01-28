@@ -259,7 +259,7 @@
       "name": "slmapcode",
       "version": "1.1.39",
       "bin": {
-        "slmapcode": "./bin/slmapcode.cjs",
+        "slmapcode": "./bin/slmapcode",
       },
       "dependencies": {
         "@actions/core": "1.11.1",
