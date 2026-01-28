@@ -19,7 +19,7 @@
     "deploy": "echo 'Deploying application...' && bun run build && echo 'Deployment completed successfully'"
   },
   "bin": {
-    "slmapcode": "./bin/slmapcode.cjs"
+    "slmapcode": "./bin/slmapcode"
   },
   "exports": {
     "./*": "./src/*.ts"
