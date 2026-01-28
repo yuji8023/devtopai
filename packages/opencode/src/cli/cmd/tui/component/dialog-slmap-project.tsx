@@ -3,6 +3,7 @@ import { DialogSelect } from "../ui/dialog-select"
 import { useDialog } from "@tui/ui/dialog"
 import { useToast } from "@tui/ui/toast"
 import { useSync } from "@tui/context/sync"
+import { SlmapConfig } from "@/config/slmap"
 import path from "path"
 
 interface SlmapProject {
@@ -20,37 +21,69 @@ interface SlmapResponse {
 // Module-level cache to prevent repeated fetches across component recreations
 let cachedProjects: SlmapProject[] | null = null
 let isFetching = false
-let fetchError: string | null = null
 let hasCheckedFile = false // Track if we've already checked for existing file
 let cachedExistingProject: SlmapProject | null = null // Cache the existing project data
 let needsConfirmationFlag = false // Track if confirmation is needed
+let cachedCredentials: { url: string; token: string } | null = null // Track credentials used for caching
+let cachedError: { error: string; credentials: { url: string | undefined; token: string | undefined } } | null = null // Cache error with credentials
 
 export function DialogSLMAPProject() {
   const dialog = useDialog()
   const toast = useToast()
   const sync = useSync()
   const [projects, setProjects] = createSignal<SlmapProject[]>(cachedProjects || [])
-  const [loading, setLoading] = createSignal(!cachedProjects && !fetchError && !needsConfirmationFlag)
-  const [error, setError] = createSignal<string | null>(fetchError)
+  const initialLoading = !cachedProjects && !cachedError && !needsConfirmationFlag
+  const [loading, setLoading] = createSignal(initialLoading)
+  const [error, setError] = createSignal<string | null>(cachedError?.error || null)
   const [existingProject, setExistingProject] = createSignal<SlmapProject | null>(cachedExistingProject)
   const [needsConfirmation, setNeedsConfirmation] = createSignal(needsConfirmationFlag)
 
   const fetchProjects = async () => {
-    // If we have cached data or an error, don't fetch again
-    if (cachedProjects) {
+    // Get current credentials from global slmap.json
+    const credentials = await SlmapConfig.read()
+    const slmapUrl = credentials?.slmap_url
+    const slmapToken = credentials?.slmap_token
+
+    // Check if credentials have changed - if so, invalidate cache
+    // This includes: null -> credentials, credentials -> null, or credentials changed
+    const credentialsChanged =
+      (cachedCredentials === null && (slmapUrl || slmapToken)) ||
+      (cachedCredentials !== null && (!slmapUrl || !slmapToken)) ||
+      (cachedCredentials !== null &&
+        (cachedCredentials.url !== slmapUrl || cachedCredentials.token !== slmapToken))
+
+    // Also check if cached error was for different credentials
+    const errorCredentialsChanged =
+      cachedError &&
+      (cachedError.credentials.url !== slmapUrl || cachedError.credentials.token !== slmapToken)
+
+    if (credentialsChanged || errorCredentialsChanged) {
+      // Clear all caches when credentials change
+      cachedProjects = null
+      cachedError = null
+      cachedCredentials = null
+      // Also reset isFetching flag when credentials change
+      isFetching = false
+      // Clear the error state in the component
+      setError(null)
+    }
+
+    // If we have cached data with same credentials, use it
+    if (cachedProjects && !credentialsChanged) {
       setProjects(cachedProjects)
       setLoading(false)
       return
     }
 
-    if (fetchError) {
-      setError(fetchError)
+    if (cachedError && !errorCredentialsChanged) {
+      setError(cachedError.error)
       setLoading(false)
       return
     }
 
     // Prevent concurrent fetches
     if (isFetching) {
+      setLoading(false)  // 确保设置 loading 状态
       return
     }
 
@@ -58,18 +91,17 @@ export function DialogSLMAPProject() {
     setLoading(true)
 
     try {
-      const config = sync.data.config
-      const slmapUrl = (config as any).slmap_url
-      const slmapToken = (config as any).slmap_token
-
       if (!slmapUrl || !slmapToken) {
-        const errorMsg = "SLMAP凭证未配置。请先运行/login命令。"
-        fetchError = errorMsg
+        const errorMsg = "SLMAP凭证未配置。请先运行 /slmap:login 命令。"
+        cachedError = { error: errorMsg, credentials: { url: slmapUrl, token: slmapToken } }
         setError(errorMsg)
         setLoading(false)
         isFetching = false
         return
       }
+
+      // Store credentials used for this fetch
+      cachedCredentials = { url: slmapUrl, token: slmapToken }
 
       // Construct the full API endpoint
       const apiUrl = `${slmapUrl}/prjs`
@@ -96,8 +128,8 @@ export function DialogSLMAPProject() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err)
 
-      // Cache the error
-      fetchError = errorMessage
+      // Cache the error with current credentials
+      cachedError = { error: errorMessage, credentials: { url: slmapUrl, token: slmapToken } }
       setError(errorMessage)
       setLoading(false)
       isFetching = false
@@ -125,7 +157,6 @@ export function DialogSLMAPProject() {
           // Read existing project data
           try {
             const currentProjectData = await file.json() as SlmapProject
-            console.log('currentProjectData', currentProjectData)
             cachedExistingProject = currentProjectData
             setExistingProject(currentProjectData)
             needsConfirmationFlag = true
@@ -133,12 +164,12 @@ export function DialogSLMAPProject() {
             setLoading(false)
             return // Don't fetch projects yet
           } catch (error) {
-            console.error("Error parsing slmap.json:", error)
+            console.error("[slmap-project] Error parsing slmap.json:", error)
             // If file exists but can't be parsed, proceed with fetching
           }
         }
       } catch (error) {
-        console.error("Error checking slmap.json:", error)
+        console.error("[slmap-project] Error checking slmap.json:", error)
         // If check fails, proceed with fetching
       }
     }
@@ -237,11 +268,11 @@ export function DialogSLMAPProject() {
           when={!error()}
           fallback={
             <DialogSelect
-              title="加载项目出错"
+              title={error() || "未知错误"}
               options={[
                 {
                   value: null,
-                  title: error() || "未知错误",
+                  title: "关闭",
                   description: "按 Escape 键关闭",
                   onSelect: () => dialog.clear(),
                 },

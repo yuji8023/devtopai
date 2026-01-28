@@ -1,7 +1,7 @@
 import { DialogPrompt } from "@tui/ui/dialog-prompt"
 import { useDialog } from "@tui/ui/dialog"
 import { useToast } from "@tui/ui/toast"
-import { Config } from "@/config/config"
+import { SlmapConfig } from "@/config/slmap"
 
 export function DialogSLMAPLogin() {
   const dialog = useDialog()
@@ -29,11 +29,11 @@ export function DialogSLMAPLogin() {
         return
       }
 
-      // Save to global config
-      await Config.updateGlobal({
+      // Save to global slmap.json
+      await SlmapConfig.write({
         slmap_url: slmapUrl,
         slmap_token: slmapToken,
-      } as any)
+      })
 
       toast.show({
         variant: "info",

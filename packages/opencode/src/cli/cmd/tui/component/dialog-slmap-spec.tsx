@@ -3,6 +3,7 @@ import { DialogSelect } from "../ui/dialog-select"
 import { useDialog } from "@tui/ui/dialog"
 import { useToast } from "@tui/ui/toast"
 import { useSync } from "@tui/context/sync"
+import { SlmapConfig } from "@/config/slmap"
 import path from "path"
 
 interface SlmapProject {
@@ -14,9 +15,10 @@ interface SlmapProject {
 
 // Module-level variables to prevent rapid repeated checks
 let lastCheckTime = 0
-let isChecking = false
+let lastCredentialCheckTime = 0  // 凭证检查时间戳
 let cachedProjectInfo: SlmapProject | null = null
 let cachedError: string | null = null
+let cachedCredentialStatus: { hasCredentials: boolean; timestamp: number } | null = null  // 缓存凭证状态
 
 export function DialogSLMAPSpec() {
   const dialog = useDialog()
@@ -26,14 +28,65 @@ export function DialogSLMAPSpec() {
   const [error, setError] = createSignal<string | null>(cachedError)
   const [projectInfo, setProjectInfo] = createSignal<SlmapProject | null>(cachedProjectInfo)
 
+  // 使用缓存的凭证状态初始化（如果有的话）
+  const now = Date.now()
+  const hasCachedCredentials = cachedCredentialStatus && now - cachedCredentialStatus.timestamp < 1000
+  const initialHasCredentials = hasCachedCredentials ? cachedCredentialStatus!.hasCredentials : null
+  const initialCheckingCredentials = hasCachedCredentials ? false : true
+
+  const [hasCredentials, setHasCredentials] = createSignal<boolean | null>(initialHasCredentials)
+  const [checkingCredentials, setCheckingCredentials] = createSignal(initialCheckingCredentials)
+
   onMount(async () => {
-    // Prevent concurrent checks
-    if (isChecking) {
+    const now = Date.now()
+    let hasCredentials = false
+
+    // 检查凭证（使用缓存或重新读取）
+    if (cachedCredentialStatus && now - cachedCredentialStatus.timestamp < 1000) {
+      hasCredentials = cachedCredentialStatus.hasCredentials
+      setHasCredentials(hasCredentials)
+      setCheckingCredentials(false)
+    } else {
+      // 首先检查凭证是否存在
+      const credentials = await SlmapConfig.read()
+
+      hasCredentials = !!(credentials?.slmap_url && credentials?.slmap_token)
+
+      // 缓存凭证状态
+      cachedCredentialStatus = {
+        hasCredentials,
+        timestamp: Date.now()
+      }
+
+      setHasCredentials(hasCredentials)
+      setCheckingCredentials(false)
+    }
+
+    if (!hasCredentials) {
       return
     }
 
+    // 凭证存在，继续检查项目信息
+
+    // 先检查文件是否存在，以决定是否使用缓存
+    const directory = sync.data.path.directory
+    const filePath = path.join(directory, "slmap.json")
+    const file = Bun.file(filePath)
+    const fileExists = await file.exists()
+
+    // 如果缓存的是错误，但文件现在存在了，清除错误缓存
+    if (cachedError && fileExists) {
+      cachedError = null
+      lastCheckTime = 0
+    }
+
+    // 如果缓存的是项目信息，但文件现在不存在了，清除项目缓存
+    if (cachedProjectInfo && !fileExists) {
+      cachedProjectInfo = null
+      lastCheckTime = 0
+    }
+
     // Check if we recently read the file (within 500ms) to prevent rapid re-reads
-    const now = Date.now()
     if (now - lastCheckTime < 500) {
       // Restore cached state
       if (cachedProjectInfo) {
@@ -45,41 +98,29 @@ export function DialogSLMAPSpec() {
       return
     }
 
-    isChecking = true
     lastCheckTime = now
-    console.log("[slmap-spec] 读取项目信息")
 
     try {
-      const directory = sync.data.path.directory
-      const filePath = path.join(directory, "slmap.json")
-      const file = Bun.file(filePath)
-      const exists = await file.exists()
-
-      if (!exists) {
-        console.log("[slmap-spec] slmap.json 文件不存在")
-        const errorMsg = "未找到 slmap.json 文件。请先运行 /slmap-project 命令选择项目。"
+      if (!fileExists) {
+        const errorMsg = "未找到 slmap.json 文件。请先运行 /slmap:project 命令选择项目。"
         cachedError = errorMsg
         setError(errorMsg)
         return
       }
 
       const projectData = (await file.json()) as SlmapProject
-      console.log("[slmap-spec] 读取到项目信息:", projectData)
+
+      // 成功读取项目信息，清除错误状态
+      cachedError = null
+      setError(null)
+
       cachedProjectInfo = projectData
       setProjectInfo(projectData)
     } catch (err) {
       console.error("[slmap-spec] 读取项目信息失败:", err)
-      console.error("[slmap-spec] 错误类型:", typeof err)
-      console.error("[slmap-spec] 错误详情:", JSON.stringify(err, null, 2))
-      if (err instanceof Error) {
-        console.error("[slmap-spec] 错误消息:", err.message)
-        console.error("[slmap-spec] 错误堆栈:", err.stack)
-      }
       const errorMsg = `读取项目信息失败: ${err}`
       cachedError = errorMsg
       setError(errorMsg)
-    } finally {
-      isChecking = false
     }
   })
 
@@ -88,19 +129,24 @@ export function DialogSLMAPSpec() {
     setError(null)
 
     try {
-      console.log("[slmap-spec] 开始下载 Spec-" + specLevel)
+      const credentials = await SlmapConfig.read()
+      const slmapUrl = credentials?.slmap_url
+      const slmapToken = credentials?.slmap_token
 
-      const config = sync.data.config
-      const slmapUrl = (config as any).slmap_url
-      const slmapToken = (config as any).slmap_token
-
+      // 凭证检查已在 onMount 中完成，这里再次检查以防万一
       if (!slmapUrl || !slmapToken) {
-        throw new Error("SLMAP凭证未配置。请先运行 /login 命令。")
+        const errorMsg = "SLMAP凭证未配置"
+        setError(errorMsg)
+        setLoading(false)
+        return
       }
 
       const project = projectInfo()
       if (!project) {
-        throw new Error("项目信息未加载")
+        const errorMsg = "项目信息未加载"
+        setError(errorMsg)
+        setLoading(false)
+        return
       }
 
       // Show downloading toast
@@ -129,8 +175,6 @@ export function DialogSLMAPSpec() {
         body: JSON.stringify(requestBody),
       })
 
-      console.log("[slmap-spec] 响应状态:", response.status, response.statusText)
-
       if (!response.ok) {
         throw new Error(`下载失败: ${response.statusText}`)
       }
@@ -152,7 +196,6 @@ export function DialogSLMAPSpec() {
           cwd: directory,
         })
       } catch (unzipError) {
-        console.log("[slmap-spec] PowerShell 解压失败，尝试 tar 命令")
         // Fallback: try using tar command (available on Windows 10+)
         try {
           const tarCmd = `tar -xf "${tempZipPath}" -C "${directory}"`
@@ -175,11 +218,10 @@ export function DialogSLMAPSpec() {
         duration: 3000,
       })
 
-      console.log("[slmap-spec] 下载完成")
       dialog.clear()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err)
-      console.error("[slmap-spec] 下载失败:", errorMessage, err)
+      console.error("[slmap-spec] 下载失败:", errorMessage)
       setError(errorMessage)
       toast.show({
         variant: "error",
@@ -196,11 +238,11 @@ export function DialogSLMAPSpec() {
       when={!error()}
       fallback={
         <DialogSelect
-          title="下载规格说明书失败"
+          title={error() || "未知错误"}
           options={[
             {
               value: null,
-              title: error() || "未知错误",
+              title: "关闭",
               description: "按 Escape 键关闭",
               onSelect: () => dialog.clear(),
             },
@@ -209,49 +251,76 @@ export function DialogSLMAPSpec() {
       }
     >
       <Show
-        when={projectInfo()}
+        when={!checkingCredentials()}
         fallback={
           <DialogSelect
-            title="加载项目信息中..."
+            title="检查凭证中..."
             options={[]}
           />
         }
       >
-        <DialogSelect
-          title={`下载规格说明书: ${projectInfo()?.prjName || projectInfo()?.pkid}`}
-          options={[
-            {
-              value: "download-0",
-              title: loading() ? "下载中..." : "开始下载 Spec-0",
-              description: loading() ? "请稍候..." : "下载并解压 Spec-0 规格说明书到当前目录",
-              onSelect: loading() ? undefined : () => downloadSpec(0),
-            },
-            {
-              value: "download-1",
-              title: loading() ? "下载中..." : "开始下载 Spec-1",
-              description: loading() ? "请稍候..." : "下载并解压 Spec-1 规格说明书到当前目录",
-              onSelect: loading() ? undefined : () => downloadSpec(1),
-            },
-            {
-              value: "download-2",
-              title: loading() ? "下载中..." : "开始下载 Spec-2",
-              description: loading() ? "请稍候..." : "下载并解压 Spec-2 规格说明书到当前目录",
-              onSelect: loading() ? undefined : () => downloadSpec(2),
-            },
-            {
-              value: "download-3",
-              title: loading() ? "下载中..." : "开始下载 Spec-3",
-              description: loading() ? "请稍候..." : "下载并解压 Spec-3 规格说明书到当前目录",
-              onSelect: loading() ? undefined : () => downloadSpec(3),
-            },
-            {
-              value: "cancel",
-              title: "取消",
-              description: "按 Escape 键关闭",
-              onSelect: () => dialog.clear(),
-            },
-          ]}
-        />
+        <Show
+          when={hasCredentials()}
+          fallback={
+            <DialogSelect
+              title="下载规格说明书"
+              options={[
+                {
+                  value: null,
+                  title: "请先配置 SLMAP 凭证",
+                  description: "运行 /slmap:login 命令进行登录配置",
+                  onSelect: () => dialog.clear(),
+                },
+              ]}
+            />
+          }
+        >
+          <Show
+            when={projectInfo()}
+            fallback={
+              <DialogSelect
+                title="加载项目信息中..."
+                options={[]}
+              />
+            }
+          >
+            <DialogSelect
+              title={`下载规格说明书: ${projectInfo()?.prjName || projectInfo()?.pkid}`}
+              options={[
+                {
+                  value: "download-0",
+                  title: loading() ? "下载中..." : "开始下载 Spec-0",
+                  description: loading() ? "请稍候..." : "下载并解压 Spec-0 规格说明书到当前目录",
+                  onSelect: loading() ? undefined : () => downloadSpec(0),
+                },
+                {
+                  value: "download-1",
+                  title: loading() ? "下载中..." : "开始下载 Spec-1",
+                  description: loading() ? "请稍候..." : "下载并解压 Spec-1 规格说明书到当前目录",
+                  onSelect: loading() ? undefined : () => downloadSpec(1),
+                },
+                {
+                  value: "download-2",
+                  title: loading() ? "下载中..." : "开始下载 Spec-2",
+                  description: loading() ? "请稍候..." : "下载并解压 Spec-2 规格说明书到当前目录",
+                  onSelect: loading() ? undefined : () => downloadSpec(2),
+                },
+                {
+                  value: "download-3",
+                  title: loading() ? "下载中..." : "开始下载 Spec-3",
+                  description: loading() ? "请稍候..." : "下载并解压 Spec-3 规格说明书到当前目录",
+                  onSelect: loading() ? undefined : () => downloadSpec(3),
+                },
+                {
+                  value: "cancel",
+                  title: "取消",
+                  description: "按 Escape 键关闭",
+                  onSelect: () => dialog.clear(),
+                },
+              ]}
+            />
+          </Show>
+        </Show>
       </Show>
     </Show>
   )
