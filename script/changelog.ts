@@ -1,29 +1,17 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun"
-import { createOpencode } from "@opencode-ai/sdk"
 import { parseArgs } from "util"
 
-export const team = [
-  "actions-user",
-  "opencode",
-  "rekram1-node",
-  "thdxr",
-  "kommander",
-  "jayair",
-  "fwang",
-  "adamdotdevin",
-  "iamdavidhill",
-  "opencode-agent[bot]",
-]
-
 export async function getLatestRelease() {
-  return fetch("https://api.github.com/repos/anomalyco/opencode/releases/latest")
-    .then((res) => {
-      if (!res.ok) throw new Error(res.statusText)
-      return res.json()
-    })
-    .then((data: any) => data.tag_name.replace(/^v/, ""))
+  // Get the latest tag from the current repository
+  const tags = await $`git tag --sort=-version:refname`.text()
+  const latestTag = tags.split("\n").filter(Boolean)[0]
+  if (!latestTag) {
+    console.log("No tags found, using 0.0.0 as base version")
+    return "0.0.0"
+  }
+  return latestTag.replace(/^v/, "")
 }
 
 type Commit = {
@@ -39,7 +27,7 @@ export async function getCommits(from: string, to: string): Promise<Commit[]> {
 
   // Get commit data with GitHub usernames from the API
   const compare =
-    await $`gh api "/repos/anomalyco/opencode/compare/${fromRef}...${toRef}" --jq '.commits[] | {sha: .sha, login: .author.login, message: .commit.message}'`.text()
+    await $`gh api "/repos/yuji8023/slmapcode/compare/${fromRef}...${toRef}" --jq '.commits[] | {sha: .sha, login: .author.login, message: .commit.message}'`.text()
 
   const commitData = new Map<string, { login: string | null; message: string }>()
   for (const line of compare.split("\n").filter(Boolean)) {
@@ -132,48 +120,13 @@ function getSection(areas: Set<string>): string {
   return "Core"
 }
 
-async function summarizeCommit(opencode: Awaited<ReturnType<typeof createOpencode>>, message: string): Promise<string> {
-  console.log("summarizing commit:", message)
-  const session = await opencode.client.session.create()
-  const result = await opencode.client.session
-    .prompt({
-      path: { id: session.data!.id },
-      body: {
-        model: { providerID: "opencode", modelID: "claude-sonnet-4-5" },
-        tools: {
-          "*": false,
-        },
-        parts: [
-          {
-            type: "text",
-            text: `Summarize this commit message for a changelog entry. Return ONLY a single line summary starting with a capital letter. Be concise but specific. If the commit message is already well-written, just clean it up (capitalize, fix typos, proper grammar). Do not include any prefixes like "fix:" or "feat:".
-
-Commit: ${message}`,
-          },
-        ],
-      },
-      signal: AbortSignal.timeout(120_000),
-    })
-    .then((x) => x.data?.parts?.find((y) => y.type === "text")?.text ?? message)
-  return result.trim()
-}
-
-export async function generateChangelog(commits: Commit[], opencode: Awaited<ReturnType<typeof createOpencode>>) {
-  // Summarize commits in parallel with max 10 concurrent requests
-  const BATCH_SIZE = 10
-  const summaries: string[] = []
-  for (let i = 0; i < commits.length; i += BATCH_SIZE) {
-    const batch = commits.slice(i, i + BATCH_SIZE)
-    const results = await Promise.all(batch.map((c) => summarizeCommit(opencode, c.message)))
-    summaries.push(...results)
-  }
-
+export async function generateChangelog(commits: Commit[]) {
   const grouped = new Map<string, string[]>()
-  for (let i = 0; i < commits.length; i++) {
-    const commit = commits[i]!
+
+  for (const commit of commits) {
     const section = getSection(commit.areas)
-    const attribution = commit.author && !team.includes(commit.author) ? ` (@${commit.author})` : ""
-    const entry = `- ${summaries[i]}${attribution}`
+    const attribution = commit.author ? ` (@${commit.author})` : ""
+    const entry = `- ${commit.message}${attribution}`
 
     if (!grouped.has(section)) grouped.set(section, [])
     grouped.get(section)!.push(entry)
@@ -195,7 +148,7 @@ export async function getContributors(from: string, to: string) {
   const fromRef = from.startsWith("v") ? from : `v${from}`
   const toRef = to === "HEAD" ? to : to.startsWith("v") ? to : `v${to}`
   const compare =
-    await $`gh api "/repos/anomalyco/opencode/compare/${fromRef}...${toRef}" --jq '.commits[] | {login: .author.login, message: .commit.message}'`.text()
+    await $`gh api "/repos/yuji8023/slmapcode/compare/${fromRef}...${toRef}" --jq '.commits[] | {login: .author.login, message: .commit.message}'`.text()
   const contributors = new Map<string, Set<string>>()
 
   for (const line of compare.split("\n").filter(Boolean)) {
@@ -203,7 +156,7 @@ export async function getContributors(from: string, to: string) {
     const title = message.split("\n")[0] ?? ""
     if (title.match(/^(ignore:|test:|chore:|ci:|release:)/i)) continue
 
-    if (login && !team.includes(login)) {
+    if (login) {
       if (!contributors.has(login)) contributors.set(login, new Set())
       contributors.get(login)!.add(title)
     }
@@ -221,28 +174,14 @@ export async function buildNotes(from: string, to: string) {
 
   console.log("generating changelog since " + from)
 
-  const opencode = await createOpencode({ port: 5044 })
   const notes: string[] = []
 
-  try {
-    const lines = await generateChangelog(commits, opencode)
-    notes.push(...lines)
-    console.log("---- Generated Changelog ----")
-    console.log(notes.join("\n"))
-    console.log("-----------------------------")
-  } catch (error) {
-    if (error instanceof Error && error.name === "TimeoutError") {
-      console.log("Changelog generation timed out, using raw commits")
-      for (const commit of commits) {
-        const attribution = commit.author && !team.includes(commit.author) ? ` (@${commit.author})` : ""
-        notes.push(`- ${commit.message}${attribution}`)
-      }
-    } else {
-      throw error
-    }
-  } finally {
-    opencode.server.close()
-  }
+  // Generate changelog without AI summarization
+  const lines = await generateChangelog(commits)
+  notes.push(...lines)
+  console.log("---- Generated Changelog ----")
+  console.log(notes.join("\n"))
+  console.log("-----------------------------")
 
   const contributors = await getContributors(from, to)
 
