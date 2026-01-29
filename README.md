@@ -1,3 +1,21 @@
+# ⚠️ 个人练手项目 / Personal Practice Project
+
+> **注意：** 这是一个基于 [OpenCode](https://github.com/anomalyco/opencode) 的个人学习项目，仅用于学习和实验目的。
+>
+> **如果你想使用 OpenCode，请访问官方项目：**
+> - 🏠 官方网站：https://opencode.ai/
+> - 📦 官方仓库：https://github.com/anomalyco/opencode
+> - 📚 官方文档：https://opencode.ai/docs
+>
+> **Note:** This is a personal learning project forked from [OpenCode](https://github.com/anomalyco/opencode), for learning and experimental purposes only.
+>
+> **If you want to use OpenCode, please visit the official project:**
+> - 🏠 Official Website: https://opencode.ai/
+> - 📦 Official Repository: https://github.com/anomalyco/opencode
+> - 📚 Official Documentation: https://opencode.ai/docs
+
+---
+
 <p align="center">
   <a href="https://opencode.ai">
     <picture>
