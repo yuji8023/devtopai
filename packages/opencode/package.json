@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "1.1.39",
+  "version": "0.0.1",
   "name": "slmapcode",
   "type": "module",
   "license": "MIT",
