@@ -1,7 +1,7 @@
 import { InputRenderable, RGBA, ScrollBoxRenderable, TextAttributes } from "@opentui/core"
 import { useTheme, selectedForeground } from "@tui/context/theme"
 import { entries, filter, flatMap, groupBy, pipe, take } from "remeda"
-import { batch, createEffect, createMemo, For, Show, type JSX, on } from "solid-js"
+import { batch, createEffect, createMemo, For, Show, type JSX, on, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useKeyboard, useTerminalDimensions, useRenderer } from "@opentui/solid"
 import * as fuzzysort from "fuzzysort"
@@ -142,7 +142,12 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
 
   createEffect(
     on([() => store.filter, () => props.current], ([filter, current]) => {
-      setTimeout(() => {
+      // Clear any pending move timeout
+      if (moveTimeout !== undefined) {
+        clearTimeout(moveTimeout)
+      }
+
+      moveTimeout = setTimeout(() => {
         if (filter.length > 0) {
           moveTo(0, true)
         } else if (current) {
@@ -251,6 +256,19 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   }
   props.ref?.(ref)
 
+  // Track pending timeouts for cleanup
+  let focusTimeout: ReturnType<typeof setTimeout> | undefined
+  let moveTimeout: ReturnType<typeof setTimeout> | undefined
+
+  onCleanup(() => {
+    if (focusTimeout !== undefined) {
+      clearTimeout(focusTimeout)
+    }
+    if (moveTimeout !== undefined) {
+      clearTimeout(moveTimeout)
+    }
+  })
+
   const keybinds = createMemo(() => props.keybind?.filter((x) => !x.disabled && x.keybind) ?? [])
 
   return (
@@ -275,7 +293,13 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
             focusedTextColor={theme.textMuted}
             ref={(r) => {
               input = r
-              setTimeout(() => input.focus(), 1)
+              focusTimeout = setTimeout(() => {
+                try {
+                  input?.focus()
+                } catch (err) {
+                  // Ignore errors if the input has been destroyed
+                }
+              }, 1)
             }}
             placeholder={props.placeholder ?? "Search"}
           />

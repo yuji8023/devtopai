@@ -152,12 +152,12 @@ export function DialogSLMAPSpec() {
       // Show downloading toast
       toast.show({
         variant: "info",
-        message: `正在下载规格说明书 Spec-${specLevel}...`,
+        message: `正在下载 Spec-${specLevel}...`,
         duration: 3000,
       })
 
       // Construct the API endpoint
-      const apiUrl = `${slmapUrl}/ide/exportSpec`
+      const apiUrl = `${slmapUrl}/sms-server/ide/exportSpec`
 
       const requestBody = {
         prjId: project.pkid,
@@ -214,7 +214,7 @@ export function DialogSLMAPSpec() {
 
       toast.show({
         variant: "success",
-        message: "规格说明书下载并解压成功！",
+        message: "Spec 下载并解压成功！",
         duration: 3000,
       })
 
@@ -263,7 +263,7 @@ export function DialogSLMAPSpec() {
           when={hasCredentials()}
           fallback={
             <DialogSelect
-              title="下载规格说明书"
+              title="下载Spec"
               options={[
                 {
                   value: null,
@@ -285,30 +285,30 @@ export function DialogSLMAPSpec() {
             }
           >
             <DialogSelect
-              title={`下载规格说明书: ${projectInfo()?.prjName || projectInfo()?.pkid}`}
+              title={`下载Spec: ${projectInfo()?.prjName || projectInfo()?.pkid}`}
               options={[
                 {
                   value: "download-0",
                   title: loading() ? "下载中..." : "开始下载 Spec-0",
-                  description: loading() ? "请稍候..." : "下载并解压 Spec-0 规格说明书到当前目录",
+                  description: loading() ? "请稍候..." : "下载并解压 Spec-0 到当前目录",
                   onSelect: loading() ? undefined : () => downloadSpec(0),
                 },
                 {
                   value: "download-1",
                   title: loading() ? "下载中..." : "开始下载 Spec-1",
-                  description: loading() ? "请稍候..." : "下载并解压 Spec-1 规格说明书到当前目录",
+                  description: loading() ? "请稍候..." : "下载并解压 Spec-1 到当前目录",
                   onSelect: loading() ? undefined : () => downloadSpec(1),
                 },
                 {
                   value: "download-2",
                   title: loading() ? "下载中..." : "开始下载 Spec-2",
-                  description: loading() ? "请稍候..." : "下载并解压 Spec-2 规格说明书到当前目录",
+                  description: loading() ? "请稍候..." : "下载并解压 Spec-2 到当前目录",
                   onSelect: loading() ? undefined : () => downloadSpec(2),
                 },
                 {
                   value: "download-3",
                   title: loading() ? "下载中..." : "开始下载 Spec-3",
-                  description: loading() ? "请稍候..." : "下载并解压 Spec-3 规格说明书到当前目录",
+                  description: loading() ? "请稍候..." : "下载并解压 Spec-3 到当前目录",
                   onSelect: loading() ? undefined : () => downloadSpec(3),
                 },
                 {

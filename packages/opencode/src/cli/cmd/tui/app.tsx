@@ -484,7 +484,7 @@ function App() {
       category: "System",
     },
     {
-      title: "About",
+      title: "关于",
       value: "about.show",
       slash: {
         name: "slmap:about",
@@ -586,7 +586,7 @@ function App() {
       }
     },
     {
-      title: "SLMAP Login",
+      title: "SLMAP 录入凭证",
       value: "slmap.login",
       category: "System",
       slash: {
@@ -597,7 +597,7 @@ function App() {
       },
     },
     {
-      title: "SLMAP Project",
+      title: "SLMAP 选择项目",
       value: "slmap.project",
       category: "System",
       slash: {
@@ -618,7 +618,7 @@ function App() {
       },
     },
     {
-      title: "SLMAP Spec",
+      title: "SLMAP 下载Spec",
       value: "slmap.spec",
       category: "System",
       slash: {

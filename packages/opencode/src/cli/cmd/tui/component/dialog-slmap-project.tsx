@@ -104,7 +104,7 @@ export function DialogSLMAPProject() {
       cachedCredentials = { url: slmapUrl, token: slmapToken }
 
       // Construct the full API endpoint
-      const apiUrl = `${slmapUrl}/prjs`
+      const apiUrl = `${slmapUrl}/sms-server/prjs`
 
       // Fetch projects from SLMAP API
       const response = await fetch(apiUrl, {
