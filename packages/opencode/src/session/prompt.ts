@@ -1799,7 +1799,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           content: "Generate a title for this conversation:\n",
         },
         ...(hasOnlySubtaskParts
-          ? [{ role: "user" as const, content: subtaskParts.map((p) => p.prompt).join("\n") }]
+          ? [{ role: "user" as const, content: subtaskParts.map((p) => p.description || p.command || p.prompt).join("\n") }]
           : MessageV2.toModelMessages(contextMessages, model)),
       ],
     })
