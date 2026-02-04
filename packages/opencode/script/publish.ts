@@ -49,7 +49,7 @@ const tasks = Object.entries(binaries).map(async ([name]) => {
 await Promise.all(tasks)
 await $`cd ./dist/${pkg.name} && bun pm pack && npm publish *.tgz --access public --tag ${Script.channel}`
 
-const image = "ghcr.io/anomalyco/opencode"
+const image = "ghcr.io/yuji8023/slmapcode"
 const platforms = "linux/amd64,linux/arm64"
 const tags = [`${image}:${version}`, `${image}:${Script.channel}`]
 const tagFlags = tags.flatMap((t) => ["-t", t])
@@ -76,17 +76,17 @@ if (!Script.preview) {
     "options=('!debug' '!strip')",
     "pkgrel=1",
     "pkgdesc='The AI coding agent built for the terminal.'",
-    "url='https://github.com/anomalyco/opencode'",
+    "url='https://github.com/yuji8023/slmapcode'",
     "arch=('aarch64' 'x86_64')",
     "license=('MIT')",
     "provides=('opencode')",
     "conflicts=('opencode')",
     "depends=('ripgrep')",
     "",
-    `source_aarch64=("\${pkgname}_\${pkgver}_aarch64.tar.gz::https://github.com/anomalyco/opencode/releases/download/v\${pkgver}\${_subver}/opencode-linux-arm64.tar.gz")`,
+    `source_aarch64=("\${pkgname}_\${pkgver}_aarch64.tar.gz::https://github.com/yuji8023/slmapcode/releases/download/v\${pkgver}\${_subver}/opencode-linux-arm64.tar.gz")`,
     `sha256sums_aarch64=('${arm64Sha}')`,
 
-    `source_x86_64=("\${pkgname}_\${pkgver}_x86_64.tar.gz::https://github.com/anomalyco/opencode/releases/download/v\${pkgver}\${_subver}/opencode-linux-x64.tar.gz")`,
+    `source_x86_64=("\${pkgname}_\${pkgver}_x86_64.tar.gz::https://github.com/yuji8023/slmapcode/releases/download/v\${pkgver}\${_subver}/opencode-linux-x64.tar.gz")`,
     `sha256sums_x86_64=('${x64Sha}')`,
     "",
     "package() {",
@@ -106,7 +106,7 @@ if (!Script.preview) {
     "options=('!debug' '!strip')",
     "pkgrel=1",
     "pkgdesc='The AI coding agent built for the terminal.'",
-    "url='https://github.com/anomalyco/opencode'",
+    "url='https://github.com/yuji8023/slmapcode'",
     "arch=('aarch64' 'x86_64')",
     "license=('MIT')",
     "provides=('opencode')",
@@ -114,7 +114,7 @@ if (!Script.preview) {
     "depends=('ripgrep')",
     "makedepends=('git' 'bun' 'go')",
     "",
-    `source=("opencode-\${pkgver}.tar.gz::https://github.com/anomalyco/opencode/archive/v\${pkgver}\${_subver}.tar.gz")`,
+    `source=("opencode-\${pkgver}.tar.gz::https://github.com/yuji8023/slmapcode/archive/v\${pkgver}\${_subver}.tar.gz")`,
     `sha256sums=('SKIP')`,
     "",
     "build() {",

@@ -28,7 +28,60 @@ permissions:
   packages: write
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    if: github.repository == 'yuji8023/slmapcode'
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Install slmapcode
+        if: inputs.bump || inputs.version
+        run: bun i -g opencode-ai
+
+      - id: version
+        run: ./script/version.ts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPENCODE_BUMP: ${{ inputs.bump }}
+          OPENCODE_VERSION: ${{ inputs.version }}
+          OPENCODE_API_KEY: ${{ secrets.SLMAPCODE_API_KEY }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
+      tag: ${{ steps.version.outputs.tag }}
+
+  build-cli:
+    needs: version
+    runs-on: ubuntu-latest
+    if: github.repository == 'yuji8023/slmapcode'
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-tags: true
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Build
+        id: build
+        run: ./packages/opencode/script/build.ts
+        env:
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
+          OPENCODE_RELEASE: ${{ needs.version.outputs.release }}
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slmapcode-cli
+          path: packages/opencode/dist
+
   publish:
+    needs:
+      - version
+      - build-cli
     runs-on: ubuntu-latest
     if: github.repository == 'yuji8023/slmapcode'
     steps:
@@ -49,31 +102,33 @@ jobs:
           git config --global user.name "yuji"
           git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: slmapcode-cli
+          path: packages/opencode/dist
+
       - name: Publish
         id: publish
-        run: ./script/publish-start.ts
+        run: ./script/publish.ts
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
-          SLMAPCODE_BUMP: ${{ inputs.bump }}
-          SLMAPCODE_VERSION: ${{ inputs.version }}
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
           SLMAPCODE_API_KEY: ${{ secrets.SLMAPCODE_API_KEY }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
           NPM_CONFIG_PROVENANCE: false
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: slmapcode-cli
-          path: packages/opencode/dist
-
     outputs:
       version: ${{ needs.version.outputs.version }}
+      release: ${{ needs.version.outputs.release }}
+      tag: ${{ needs.version.outputs.tag }}
 
   publish-release:
     needs:
+      - version
       - publish
-    if: needs.publish.outputs.tag
+    if: needs.version.outputs.tag
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -131,6 +186,6 @@ jobs:
 
       - run: ./script/publish.ts
         env:
-          SLMAPCODE_VERSION: ${{ needs.publish.outputs.version  }}
+          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
