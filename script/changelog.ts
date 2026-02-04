@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun"
+import { createOpencode } from "@opencode-ai/sdk/v2"
 import { parseArgs } from "util"
+import { Script } from "@opencode-ai/script"
 
 export async function getLatestRelease() {
   // Get the latest tag from the current repository
