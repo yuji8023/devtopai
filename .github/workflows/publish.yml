@@ -50,17 +50,22 @@ jobs:
         run: |
           # Update all package.json files with new version
           bun install
-          node -e "
-          const fs = require('fs');
-          const glob = require('glob');
+          bun -e "
+          import { Glob } from 'bun';
           const version = process.env.VERSION;
-          const files = glob.sync('**/package.json', { ignore: ['**/node_modules/**', '**/dist/**'] });
-          files.forEach(file => {
-            const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+          const glob = new Glob('**/package.json');
+          const files = [];
+          for await (const file of glob.scan({ cwd: '.', onlyFiles: true })) {
+            if (file.includes('node_modules') || file.includes('dist')) continue;
+            files.push(file);
+          }
+          for (const file of files) {
+            const text = await Bun.file(file).text();
+            const pkg = JSON.parse(text);
             pkg.version = version;
-            fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+            await Bun.write(file, JSON.stringify(pkg, null, 2) + '\n');
             console.log('Updated:', file);
-          });
+          }
           "
         env:
           VERSION: ${{ inputs.version || '0.0.2' }}
@@ -77,7 +82,7 @@ jobs:
       - name: Get Version
         id: version
         run: |
-          VERSION=$(node -p "require('./packages/opencode/package.json').version")
+          VERSION=$(bun -p "require('./packages/opencode/package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
