@@ -46,38 +46,12 @@ jobs:
           git config --global user.name "yuji"
           git remote set-url origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}
 
-      - name: Update Version
-        run: |
-          # Update all package.json files with new version
-          bun install
-          bun -e "
-          import { Glob } from 'bun';
-          const version = process.env.VERSION;
-          const glob = new Glob('**/package.json');
-          const files = [];
-          for await (const file of glob.scan({ cwd: '.', onlyFiles: true })) {
-            if (file.includes('node_modules') || file.includes('dist')) continue;
-            files.push(file);
-          }
-          for (const file of files) {
-            const text = await Bun.file(file).text();
-            const pkg = JSON.parse(text);
-            pkg.version = version;
-            await Bun.write(file, JSON.stringify(pkg, null, 2) + '\n');
-            console.log('Updated:', file);
-          }
-          "
-        env:
-          VERSION: ${{ inputs.version || '0.0.2' }}
-        if: inputs.version
-
-      - name: Build CLI (All Platforms)
-        run: ./packages/opencode/script/build.ts
+      - name: Build CLI
+        run: ./packages/opencode/script/build.ts --single
         env:
           SLMAPCODE_CHANNEL: latest
           SLMAPCODE_BUMP: ${{ inputs.bump }}
           SLMAPCODE_VERSION: ${{ inputs.version }}
-          SLMAPCODE_RELEASE: true
           GH_TOKEN: ${{ github.token }}
 
       - name: Get Version
@@ -87,75 +61,23 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
-      - name: Create GitHub Release
-        id: create_release
+      - name: Create and Publish Release
         if: inputs.create_release == true && (inputs.bump || inputs.version)
         run: |
-          gh release create "v${{ steps.version.outputs.version }}" \
-            --title "v${{ steps.version.outputs.version }}" \
-            --notes "Release v${{ steps.version.outputs.version }}" \
-            --draft \
-            packages/opencode/dist/*.tar.gz \
-            packages/opencode/dist/*.zip
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Publish Release
-        if: steps.create_release.outcome == 'success'
-        run: |
-          gh release edit "v${{ steps.version.outputs.version }}" --draft=false
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Publish to npm
-        if: inputs.bump || inputs.version
-        run: |
-          # Create a temporary directory for publishing
-          TEMP_DIR=$(mktemp -d)
-
-          # Copy package files
-          cp packages/opencode/package.json "$TEMP_DIR/"
-          cp packages/opencode/README.md "$TEMP_DIR/" 2>/dev/null || echo "No README found"
-          cp -r packages/opencode/bin "$TEMP_DIR/" 2>/dev/null || echo "No bin directory"
-          cp -r packages/opencode/dist "$TEMP_DIR/" 2>/dev/null || echo "No dist directory"
-
-          cd "$TEMP_DIR"
-
-          # Remove private flag and workspace references
-          bun -e "
-          const pkg = JSON.parse(await Bun.file('package.json').text());
-          delete pkg.private;
-          delete pkg.workspaces;
-          // Remove workspace dependencies
-          if (pkg.dependencies) {
-            for (const [key, value] of Object.entries(pkg.dependencies)) {
-              if (typeof value === 'string' && value.startsWith('workspace:')) {
-                delete pkg.dependencies[key];
-              }
-            }
-          }
-          if (pkg.devDependencies) {
-            for (const [key, value] of Object.entries(pkg.devDependencies)) {
-              if (typeof value === 'string' && value.startsWith('workspace:')) {
-                delete pkg.devDependencies[key];
-              }
-            }
-          }
-          await Bun.write('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
-
-          # Publish to npm (requires NPM_TOKEN secret)
-          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
-            npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
-            npm publish --access public
-            echo "Published to npm successfully"
+          # Create release with artifacts if they exist
+          if ls packages/opencode/dist/*.tar.gz packages/opencode/dist/*.zip 1> /dev/null 2>&1; then
+            gh release create "v${{ steps.version.outputs.version }}" \
+              --title "v${{ steps.version.outputs.version }}" \
+              --notes "Release v${{ steps.version.outputs.version }}" \
+              packages/opencode/dist/*.tar.gz \
+              packages/opencode/dist/*.zip || echo "Release creation failed or already exists"
           else
-            echo "NPM_TOKEN not set, skipping npm publish"
+            gh release create "v${{ steps.version.outputs.version }}" \
+              --title "v${{ steps.version.outputs.version }}" \
+              --notes "Release v${{ steps.version.outputs.version }}" || echo "Release creation failed or already exists"
           fi
-
-          # Cleanup
-          cd -
-          rm -rf "$TEMP_DIR"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - uses: actions/upload-artifact@v4
         with:
