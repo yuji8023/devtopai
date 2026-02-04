@@ -20,6 +20,7 @@ const env = {
   SLMAPCODE_CHANNEL: process.env["SLMAPCODE_CHANNEL"],
   SLMAPCODE_BUMP: process.env["SLMAPCODE_BUMP"],
   SLMAPCODE_VERSION: process.env["SLMAPCODE_VERSION"],
+  SLMAPCODE_RELEASE: process.env["SLMAPCODE_RELEASE"],
 }
 const CHANNEL = await (async () => {
   if (env.SLMAPCODE_CHANNEL) return env.SLMAPCODE_CHANNEL
@@ -70,7 +71,7 @@ export const Script = {
     return IS_PREVIEW
   },
   get release(): boolean {
-    return !!env.OPENCODE_RELEASE
+    return !!env.SLMAPCODE_RELEASE
   },
   get team() {
     return team
