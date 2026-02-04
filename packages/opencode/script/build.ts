@@ -187,7 +187,12 @@ if (Script.release) {
       await $`zip -r ../../${key}.zip *`.cwd(`dist/${key}/bin`)
     }
   }
-  await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --clobber`
+  // Only upload if not in CI (GitHub Actions will handle upload)
+  if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+    await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --clobber`
+  } else {
+    console.log("Skipping gh release upload (running in CI)")
+  }
 }
 
 export { binaries }
