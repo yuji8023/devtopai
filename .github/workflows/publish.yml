@@ -71,12 +71,13 @@ jobs:
           VERSION: ${{ inputs.version || '0.0.2' }}
         if: inputs.version
 
-      - name: Build CLI
-        run: ./packages/opencode/script/build.ts --single
+      - name: Build CLI (All Platforms)
+        run: ./packages/opencode/script/build.ts
         env:
           SLMAPCODE_CHANNEL: latest
           SLMAPCODE_BUMP: ${{ inputs.bump }}
           SLMAPCODE_VERSION: ${{ inputs.version }}
+          SLMAPCODE_RELEASE: true
           GH_TOKEN: ${{ github.token }}
 
       - name: Get Version
@@ -87,6 +88,7 @@ jobs:
           echo "Version: $VERSION"
 
       - name: Create GitHub Release
+        id: create_release
         if: inputs.create_release == true && (inputs.bump || inputs.version)
         run: |
           gh release create "v${{ steps.version.outputs.version }}" \
@@ -94,16 +96,34 @@ jobs:
             --notes "Release v${{ steps.version.outputs.version }}" \
             --draft \
             packages/opencode/dist/*.tar.gz \
-            packages/opencode/dist/*.zip || true
+            packages/opencode/dist/*.zip
         env:
           GH_TOKEN: ${{ github.token }}
 
       - name: Publish Release
-        if: inputs.create_release == true && (inputs.bump || inputs.version)
+        if: steps.create_release.outcome == 'success'
         run: |
           gh release edit "v${{ steps.version.outputs.version }}" --draft=false
         env:
           GH_TOKEN: ${{ github.token }}
+
+      - name: Publish to npm
+        if: inputs.bump || inputs.version
+        run: |
+          cd packages/opencode
+          # Remove private flag for publishing
+          bun -e "
+          const pkg = JSON.parse(await Bun.file('package.json').text());
+          delete pkg.private;
+          await Bun.write('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          # Publish to npm (requires NPM_TOKEN secret)
+          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+            npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
+            npm publish --access public
+          else
+            echo "NPM_TOKEN not set, skipping npm publish"
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
