@@ -1,26 +1,20 @@
 name: publish
-run-name: "${{ format('release {0}', inputs.bump) }}"
+run-name: "${{ format('release {0}', inputs.version) }}"
 
 on:
-  push:
-    branches:
-      - feature-slmap-code
   workflow_dispatch:
     inputs:
-      bump:
-        description: "Bump major, minor, or patch"
-        required: false
-        type: choice
-        options:
-          - major
-          - minor
-          - patch
       version:
-        description: "Override version (optional)"
-        required: false
+        description: "Version to publish (e.g., 0.0.3)"
+        required: true
         type: string
+      create_release:
+        description: "Create GitHub Release"
+        required: false
+        type: boolean
+        default: true
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.version || inputs.bump }}
+concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.version }}
 
 permissions:
   id-token: write
@@ -28,34 +22,7 @@ permissions:
   packages: write
 
 jobs:
-  version:
-    runs-on: ubuntu-latest
-    if: github.repository == 'yuji8023/slmapcode'
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - uses: ./.github/actions/setup-bun
-
-      - name: Install slmapcode
-        if: inputs.bump || inputs.version
-        run: bun i -g opencode-ai
-
-      - id: version
-        run: ./script/version.ts
-        env:
-          GH_TOKEN: ${{ github.token }}
-          OPENCODE_BUMP: ${{ inputs.bump }}
-          OPENCODE_VERSION: ${{ inputs.version }}
-          OPENCODE_API_KEY: ${{ secrets.SLMAPCODE_API_KEY }}
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      release: ${{ steps.version.outputs.release }}
-      tag: ${{ steps.version.outputs.tag }}
-
   build-cli:
-    needs: version
     runs-on: ubuntu-latest
     if: github.repository == 'yuji8023/slmapcode'
     steps:
@@ -69,8 +36,9 @@ jobs:
         id: build
         run: ./packages/opencode/script/build.ts
         env:
-          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
-          OPENCODE_RELEASE: ${{ needs.version.outputs.release }}
+          SLMAPCODE_CHANNEL: latest
+          SLMAPCODE_VERSION: ${{ inputs.version }}
+          SLMAPCODE_RELEASE: true
           GH_TOKEN: ${{ github.token }}
 
       - uses: actions/upload-artifact@v4
@@ -79,9 +47,7 @@ jobs:
           path: packages/opencode/dist
 
   publish:
-    needs:
-      - version
-      - build-cli
+    needs: build-cli
     runs-on: ubuntu-latest
     if: github.repository == 'yuji8023/slmapcode'
     steps:
@@ -113,23 +79,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
-          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
+          SLMAPCODE_VERSION: ${{ inputs.version }}
+          SLMAPCODE_CHANNEL: latest
           SLMAPCODE_API_KEY: ${{ secrets.SLMAPCODE_API_KEY }}
-          AUR_KEY: ${{ secrets.AUR_KEY }}
           NPM_CONFIG_PROVENANCE: false
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-    outputs:
-      version: ${{ needs.version.outputs.version }}
-      release: ${{ needs.version.outputs.release }}
-      tag: ${{ needs.version.outputs.tag }}
+      - name: Create GitHub Release
+        if: inputs.create_release == true
+        run: |
+          gh release create "v${{ inputs.version }}" \
+            --title "v${{ inputs.version }}" \
+            --notes "Release v${{ inputs.version }}" \
+            packages/opencode/dist/*.tar.gz \
+            packages/opencode/dist/*.zip || echo "Release already exists"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
-  publish-release:
-    needs:
-      - version
-      - publish
-    if: needs.version.outputs.tag
-    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v3
 
@@ -147,6 +115,10 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+          platforms: linux/amd64,linux/arm64
 
       - uses: actions/setup-node@v4
         with:
@@ -186,6 +158,6 @@ jobs:
 
       - run: ./script/publish.ts
         env:
-          OPENCODE_VERSION: ${{ needs.version.outputs.version }}
+          SLMAPCODE_VERSION: ${{ needs.version.outputs.version }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
           GITHUB_TOKEN: ${{ github.token }}

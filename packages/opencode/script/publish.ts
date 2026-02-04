@@ -49,11 +49,21 @@ const tasks = Object.entries(binaries).map(async ([name]) => {
 await Promise.all(tasks)
 await $`cd ./dist/${pkg.name} && bun pm pack && npm publish *.tgz --access public --tag ${Script.channel}`
 
-const image = "ghcr.io/yuji8023/slmapcode"
-const platforms = "linux/amd64,linux/arm64"
-const tags = [`${image}:${version}`, `${image}:${Script.channel}`]
-const tagFlags = tags.flatMap((t) => ["-t", t])
-await $`docker buildx build --platform ${platforms} ${tagFlags} --push .`
+// Docker image build - DISABLED (not needed for CLI-only publishing)
+// Uncomment and set SLMAPCODE_BUILD_DOCKER=true if you need Docker images
+/*
+if (process.env.CI || process.env.SLMAPCODE_BUILD_DOCKER) {
+  console.log("\n=== Building Docker images ===\n")
+  const image = "ghcr.io/yuji8023/slmapcode"
+  const platforms = "linux/amd64,linux/arm64"
+  const tags = [`${image}:${version}`, `${image}:${Script.channel}`]
+  const tagFlags = tags.flatMap((t) => ["-t", t])
+  await $`docker buildx build --platform ${platforms} ${tagFlags} --push .`
+} else {
+  console.log("\n=== Skipping Docker build (not in CI) ===\n")
+}
+*/
+console.log("\n=== Docker build disabled ===\n")
 
 // registries
 if (!Script.preview) {
