@@ -18,7 +18,7 @@
     "deploy": "echo 'Deploying application...' && bun run build && echo 'Deployment completed successfully'"
   },
   "bin": {
-    "opencode": "./bin/opencode"
+    "devtopai": "./bin/devtopai"
   },
   "randomField": "this-is-a-random-value-12345",
   "exports": {
