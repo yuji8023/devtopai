@@ -1,40 +1,29 @@
 # OpenCode Agent Guidelines
 
 - Default branch: `dev`
-- ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE
-- Prefer automation: execute requested actions without confirmation unless blocked by missing info or safety/irreversibility
+- Prefer automation: execute actions without confirmation unless blocked by missing info or safety concerns
+- Use parallel tools when applicable
 
 ## Build/Test Commands
 
-### Installation & Development
-
 ```bash
-bun install                    # Install dependencies (requires Bun 1.3+)
-bun dev                        # Run TUI in packages/opencode directory
+# Installation & Development (requires Bun 1.3+)
+bun install                    # Install dependencies
+bun dev                        # Run TUI in packages/opencode
 bun dev <directory>            # Run TUI in specific directory
-bun dev .                      # Run TUI in repo root
 bun dev serve                  # Start headless API server (port 4096)
-bun dev serve --port 8080      # Start server on custom port
 bun dev web                    # Start server + open web interface
-```
 
-### Type Checking & Building
-
-```bash
-bun run typecheck              # Typecheck all packages (uses turbo)
-bun run --cwd packages/opencode typecheck  # Typecheck opencode package (uses tsgo)
+# Type Checking & Building
+bun run typecheck              # Typecheck all packages (turbo)
+bun run --cwd packages/opencode typecheck  # Typecheck opencode (tsgo)
 ./packages/opencode/script/build.ts --single  # Build standalone executable
-```
 
-### Testing
-
-```bash
-bun test                       # Run all tests (from packages/opencode)
+# Testing (run from packages/opencode)
+bun test                       # Run all tests
 bun test test/tool/bash.test.ts  # Run single test file
 bun test --grep "bash"         # Run tests matching pattern
 ```
-
-### SDK Regeneration
 
 When modifying `packages/opencode/src/server/server.ts`, run `./script/generate.ts` to regenerate SDK.
 
@@ -47,64 +36,59 @@ When modifying `packages/opencode/src/server/server.ts`, run `./script/generate.
 - Never use `any` type
 - Prefer single word variable names
 - Use Bun APIs: `Bun.file()`, `$\`...\`` for shell commands
-- Rely on type inference; avoid explicit type annotations unless necessary for exports
+- Rely on type inference; avoid explicit annotations unless necessary for exports
 - Prefer functional array methods (flatMap, filter, map) over for loops
+- Avoid `else` statements; use early returns
 
-### Imports
+### Imports & Naming
 
 ```ts
-// Good: Named imports, relative paths
+// Named imports, relative paths
 import { Tool } from "./tool"
 import { Log } from "../util/log"
 import z from "zod"
+
+// Good: single word names, inline values used only once
+const foo = 1
+const journal = await Bun.file(path.join(dir, "journal.json")).json()
+
+// Bad: compound names, unnecessary intermediate variables
+const fooBar = 1
+const journalPath = path.join(dir, "journal.json")
 ```
 
-### Naming
-
-Prefer single word names. Inline values used only once:
+### Variables & Control Flow
 
 ```ts
-// Good: const foo = 1; function journal(dir: string) {}
-// Bad: const fooBar = 1; function prepareJournal(dir: string) {}
+// Good: direct access, ternaries, early returns
+obj.a
+obj.b
+const foo = condition ? 1 : 2
 
-// Good: const journal = await Bun.file(path.join(dir, "journal.json")).json()
-// Bad: const journalPath = path.join(dir, "journal.json"); const journal = ...
-```
-
-### Destructuring & Variables
-
-Avoid unnecessary destructuring. Prefer `const` over `let`. Use ternaries or early returns.
-
-```ts
-// Good: obj.a; obj.b; const foo = condition ? 1 : 2
-// Bad: const { a, b } = obj; let foo; if (condition) foo = 1; else foo = 2
+// Bad: unnecessary destructuring, let, else
+const { a, b } = obj
+let foo
+if (condition) foo = 1
+else foo = 2
 ```
 
 ### Namespace Pattern
-
-Use namespace-based organization for modules:
 
 ```ts
 export namespace Tool {
   export function define(id: string, init: ...) { ... }
 }
-// Usage: const tool = Tool.define("bash", async () => { ... })
+// Usage: Tool.define("bash", async () => { ... })
 ```
 
-### Error Handling
-
-Use NamedError pattern for typed errors:
+### Error Handling & Validation
 
 ```ts
+// NamedError pattern for typed errors
 import { NamedError } from "@opencode-ai/util/error"
 export const NotFoundError = NamedError.create("NotFoundError", z.object({ message: z.string() }))
-```
 
-### Validation
-
-Use Zod schemas for all input validation:
-
-```ts
+// Zod schemas for all input validation
 const params = z.object({
   command: z.string().describe("The command to execute"),
   timeout: z.number().optional(),
@@ -113,13 +97,11 @@ const params = z.object({
 
 ### Schema Definitions (Drizzle)
 
-Use snake_case for field names so column names don't need to be redefined:
-
 ```ts
-// Good
+// Use snake_case for field names (no column name redefinition needed)
 const table = sqliteTable("session", {
   id: text().primaryKey(),
-  project_id: text().notNull(),
+  project_id: text().notNull(), // Good
   created_at: integer().notNull(),
 })
 // Bad: projectID: text("project_id"), createdAt: integer("created_at")
@@ -138,8 +120,6 @@ const table = sqliteTable("session", {
 
 ### Tool Implementation
 
-Implement tools using `Tool.define()`:
-
 ```ts
 export const MyTool = Tool.define("my-tool", async () => ({
   description: "Tool description",
@@ -152,8 +132,6 @@ export const MyTool = Tool.define("my-tool", async () => ({
 
 ### Logging
 
-Use `Log.create()` pattern:
-
 ```ts
 const log = Log.create({ service: "my-service" })
 log.info("message", { extra: "data" })
@@ -161,13 +139,17 @@ log.info("message", { extra: "data" })
 
 ## Testing
 
-- Avoid mocks as much as possible
-- Test actual implementation, do not duplicate logic into tests
-- Use `bun:test` for test framework
+- Avoid mocks; test actual implementation
+- Use `bun:test` framework
 - Use `Instance.provide()` for test context setup
 
 ## Formatting
 
-- Prettier config: `semi: false`, `printWidth: 120`
-- No semicolons
-- 120 character line width
+- Prettier: `semi: false`, `printWidth: 120`
+- No semicolons, 120 char line width
+
+## PR Conventions
+
+Titles follow conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`
+
+Optional scope: `feat(app):`, `fix(desktop):`, `chore(opencode):`
