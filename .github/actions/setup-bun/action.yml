@@ -6,7 +6,9 @@ runs:
     - name: Cache Bun dependencies
       uses: actions/cache@v4
       with:
-        key: ${{ github.repository }}-bun-cache-${{ runner.os }}
+        key: ${{ github.repository }}-bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+        restore-keys: |
+          ${{ github.repository }}-bun-${{ runner.os }}-
         path: ~/.bun
 
     - name: Setup Bun
