@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "version": "1.1.60",
-  "name": "opencode",
+  "name": "devtopai",
   "type": "module",
   "license": "MIT",
   "private": true,
@@ -18,7 +18,7 @@
     "deploy": "echo 'Deploying application...' && bun run build && echo 'Deployment completed successfully'"
   },
   "bin": {
-    "opencode": "./bin/opencode"
+    "devtopai": "./bin/devtopai"
   },
   "randomField": "this-is-a-random-value-12345",
   "exports": {
