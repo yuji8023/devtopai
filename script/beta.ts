@@ -2,6 +2,11 @@
 
 import { $ } from "bun"
 
+const ghEnv = {
+  ...process.env,
+  GH_TOKEN: process.env.GH_TOKEN || "",
+}
+
 interface PR {
   number: number
   title: string
@@ -23,7 +28,7 @@ This PR cannot be merged into the beta branch due to: **${reason}**
 Please resolve this issue to include this PR in the next beta release.`
 
   try {
-    await $`gh pr comment ${prNumber} --body ${body}`
+    await $`gh pr comment ${prNumber} --body ${body}`.env(ghEnv)
     console.log(`  Posted comment on PR #${prNumber}`)
   } catch (err) {
     console.log(`  Failed to post comment on PR #${prNumber}: ${err}`)
@@ -79,7 +84,9 @@ async function fix(pr: PR, files: string[]) {
 async function main() {
   console.log("Fetching open PRs with beta label...")
 
-  const stdout = await $`gh pr list --state open --label beta --json number,title,author,labels --limit 100`.text()
+  const stdout = await $`gh pr list --state open --label beta --json number,title,author,labels --limit 100`
+    .env(ghEnv)
+    .text()
   const prs: PR[] = JSON.parse(stdout).sort((a: PR, b: PR) => a.number - b.number)
 
   console.log(`Found ${prs.length} open PRs with beta label`)

@@ -5,6 +5,11 @@ import { createOpencode } from "@opencode-ai/sdk/v2"
 import { parseArgs } from "util"
 import { Script } from "@opencode-ai/script"
 
+const ghEnv = {
+  ...process.env,
+  GH_TOKEN: process.env.GH_TOKEN || "",
+}
+
 type Release = {
   tag_name: string
   draft: boolean
@@ -43,7 +48,9 @@ export async function getCommits(from: string, to: string): Promise<Commit[]> {
 
   // Get commit data with GitHub usernames from the API
   const compare =
-    await $`gh api "/repos/anomalyco/opencode/compare/${fromRef}...${toRef}" --jq '.commits[] | {sha: .sha, login: .author.login, message: .commit.message}'`.text()
+    await $`gh api "/repos/anomalyco/opencode/compare/${fromRef}...${toRef}" --jq '.commits[] | {sha: .sha, login: .author.login, message: .commit.message}'`
+      .env(ghEnv)
+      .text()
 
   const commitData = new Map<string, { login: string | null; message: string }>()
   for (const line of compare.split("\n").filter(Boolean)) {
@@ -201,7 +208,9 @@ export async function getContributors(from: string, to: string) {
   const fromRef = from.startsWith("v") ? from : `v${from}`
   const toRef = to === "HEAD" ? to : to.startsWith("v") ? to : `v${to}`
   const compare =
-    await $`gh api "/repos/anomalyco/opencode/compare/${fromRef}...${toRef}" --jq '.commits[] | {login: .author.login, message: .commit.message}'`.text()
+    await $`gh api "/repos/anomalyco/opencode/compare/${fromRef}...${toRef}" --jq '.commits[] | {login: .author.login, message: .commit.message}'`
+      .env(ghEnv)
+      .text()
   const contributors = new Map<string, Set<string>>()
 
   for (const line of compare.split("\n").filter(Boolean)) {
@@ -240,7 +249,7 @@ export async function buildNotes(from: string, to: string) {
     if (error instanceof Error && error.name === "TimeoutError") {
       console.log("Changelog generation timed out, using raw commits")
       for (const commit of commits) {
-        const attribution = commit.author && !team.includes(commit.author) ? ` (@${commit.author})` : ""
+        const attribution = commit.author && !Script.team.includes(commit.author) ? ` (@${commit.author})` : ""
         notes.push(`- ${commit.message}${attribution}`)
       }
     } else {
