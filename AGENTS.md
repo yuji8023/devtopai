@@ -42,6 +42,17 @@ When modifying `packages/opencode/src/server/server.ts`, run `./script/generate.
 
 ### Imports & Naming
 
+### Naming Enforcement (Read This)
+
+THIS RULE IS MANDATORY FOR AGENT WRITTEN CODE.
+
+- Use single word names by default for new locals, params, and helper functions.
+- Multi-word names are allowed only when a single word would be unclear or ambiguous.
+- Do not introduce new camelCase compounds when a short single-word alternative is clear.
+- Before finishing edits, review touched lines and shorten newly introduced identifiers where possible.
+- Good short names to prefer: `pid`, `cfg`, `err`, `opts`, `dir`, `root`, `child`, `state`, `timeout`.
+- Examples to avoid unless truly required: `inputPID`, `existingClient`, `connectTimeout`, `workerPath`.
+
 ```ts
 // Named imports, relative paths
 import { Tool } from "./tool"
@@ -139,17 +150,6 @@ log.info("message", { extra: "data" })
 
 ## Testing
 
-- Avoid mocks; test actual implementation
-- Use `bun:test` framework
-- Use `Instance.provide()` for test context setup
-
-## Formatting
-
-- Prettier: `semi: false`, `printWidth: 120`
-- No semicolons, 120 char line width
-
-## PR Conventions
-
-Titles follow conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`
-
-Optional scope: `feat(app):`, `fix(desktop):`, `chore(opencode):`
+- Avoid mocks as much as possible
+- Test actual implementation, do not duplicate logic into tests
+- Tests cannot run from repo root (guard: `do-not-run-tests-from-root`); run from package dirs like `packages/opencode`.
