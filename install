@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-APP=devtopai
+APP=Revtopai
 
 MUTED='\033[0;2m'
 RED='\033[0;31m'
@@ -65,7 +65,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-INSTALL_DIR=$HOME/.devtopai/bin
+INSTALL_DIR=$HOME/.Revtopai/bin
 mkdir -p "$INSTALL_DIR"
 
 # If --binary is provided, skip all download/detection logic
@@ -219,11 +219,11 @@ print_message() {
 }
 
 check_version() {
-    if command -v devtopai >/dev/null 2>&1; then
-        devtopai_path=$(which devtopai)
+    if command -v Revtopai >/dev/null 2>&1; then
+        devtopai_path=$(which Revtopai)
 
         ## Check the installed version
-        installed_version=$(devtopai --version 2>/dev/null || echo "")
+        installed_version=$(Revtopai --version 2>/dev/null || echo "")
 
         if [[ "$installed_version" != "$specific_version" ]]; then
             print_message info "${MUTED}Installed version: ${NC}$installed_version."
@@ -325,7 +325,7 @@ download_with_progress() {
 }
 
 download_and_install() {
-    print_message info "\n${MUTED}Installing ${NC}devtopai ${MUTED}version: ${NC}$specific_version"
+    print_message info "\n${MUTED}Installing ${NC}Revtopai ${MUTED}version: ${NC}$specific_version"
     local tmp_dir="${TMPDIR:-/tmp}/opencode_install_$$"
     mkdir -p "$tmp_dir"
 
@@ -340,15 +340,15 @@ download_and_install() {
         unzip -q "$tmp_dir/$filename" -d "$tmp_dir"
     fi
 
-    mv "$tmp_dir/devtopai" "$INSTALL_DIR"
-    chmod 755 "${INSTALL_DIR}/devtopai"
+    mv "$tmp_dir/Revtopai" "$INSTALL_DIR"
+    chmod 755 "${INSTALL_DIR}/Revtopai"
     rm -rf "$tmp_dir"
 }
 
 install_from_binary() {
-    print_message info "\n${MUTED}Installing ${NC}devtopai ${MUTED}from: ${NC}$binary_path"
-    cp "$binary_path" "${INSTALL_DIR}/devtopai"
-    chmod 755 "${INSTALL_DIR}/devtopai"
+    print_message info "\n${MUTED}Installing ${NC}Revtopai ${MUTED}from: ${NC}$binary_path"
+    cp "$binary_path" "${INSTALL_DIR}/Revtopai"
+    chmod 755 "${INSTALL_DIR}/Revtopai"
 }
 
 if [ -n "$binary_path" ]; then
@@ -366,9 +366,9 @@ add_to_path() {
     if grep -Fxq "$command" "$config_file"; then
         print_message info "Command already exists in $config_file, skipping write."
     elif [[ -w $config_file ]]; then
-        echo -e "\n# devtopai" >> "$config_file"
+        echo -e "\n# Revtopai" >> "$config_file"
         echo "$command" >> "$config_file"
-        print_message info "${MUTED}Successfully added ${NC}devtopai ${MUTED}to \$PATH in ${NC}$config_file"
+        print_message info "${MUTED}Successfully added ${NC}Revtopai ${MUTED}to \$PATH in ${NC}$config_file"
     else
         print_message warning "Manually add the directory to $config_file (or similar):"
         print_message info "  $command"
@@ -453,7 +453,7 @@ echo -e ""
 echo -e "${MUTED}OpenCode includes free models, to start:${NC}"
 echo -e ""
 echo -e "cd <project>  ${MUTED}# Open directory${NC}"
-echo -e "devtopai      ${MUTED}# Run command${NC}"
+echo -e "Revtopai      ${MUTED}# Run command${NC}"
 echo -e ""
 echo -e "${MUTED}For more information visit ${NC}https://opencode.ai/docs"
 echo -e ""
