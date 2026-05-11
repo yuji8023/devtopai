@@ -49,8 +49,8 @@ function detectPlatformAndArch() {
 
 function findBinary() {
   const { platform, arch } = detectPlatformAndArch()
-  const packageName = `devtopai-${platform}-${arch}`
-  const binaryName = platform === "windows" ? "devtopai.exe" : "devtopai"
+  const packageName = `ratopai-${platform}-${arch}`
+  const binaryName = platform === "windows" ? "ratopai.exe" : "ratopai"
 
   try {
     // Use require.resolve to find the package
@@ -89,7 +89,7 @@ function symlinkBinary(sourcePath, binaryName) {
   const { targetPath } = prepareBinDirectory(binaryName)
 
   fs.symlinkSync(sourcePath, targetPath)
-  console.log(`devtopai binary symlinked: ${targetPath} -> ${sourcePath}`)
+  console.log(`ratopai binary symlinked: ${targetPath} -> ${sourcePath}`)
 
   // Verify the file exists after operation
   if (!fs.existsSync(targetPath)) {
@@ -118,7 +118,7 @@ async function main() {
     }
     fs.chmodSync(target, 0o755)
   } catch (error) {
-    console.error("Failed to setup devtopai binary:", error.message)
+    console.error("Failed to setup ratopai binary:", error.message)
     process.exit(1)
   }
 }

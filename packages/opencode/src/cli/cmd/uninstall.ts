@@ -24,7 +24,7 @@ interface RemovalTargets {
 
 export const UninstallCommand = {
   command: "uninstall",
-  describe: "uninstall devtopai and remove all related files",
+  describe: "uninstall ratopai and remove all related files",
   builder: (yargs: Argv) =>
     yargs
       .option("keep-config", {

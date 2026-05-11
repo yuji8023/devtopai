@@ -12,9 +12,9 @@ const output = [`version=${Script.version}`]
 
 if (!Script.preview) {
   // For first release or when no previous tags exist, use simple release notes
-  const body = `Release v${Script.version}\n\nFirst release of devtopai CLI.`
+  const body = `Release v${Script.version}\n\nFirst release of ratopai CLI.`
   const dir = process.env.RUNNER_TEMP ?? "/tmp"
-  const file = `${dir}/devtopai-release-notes.txt`
+  const file = `${dir}/ratopai-release-notes.txt`
   await Bun.write(file, body)
   await $`gh release create v${Script.version} -d --title "v${Script.version}" --notes-file ${file}`.env(ghEnv)
   const release = await $`gh release view v${Script.version} --json tagName,databaseId`.env(ghEnv).json()
