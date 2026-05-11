@@ -64,7 +64,7 @@ function show(out: string) {
 
 const cli = yargs(args)
   .parserConfiguration({ "populate--": true })
-  .scriptName("Revtopai")
+  .scriptName("revtopai")
   .wrap(100)
   .help("help", "show help")
   .alias("help", "h")
