@@ -15,10 +15,11 @@ export namespace ConfigPaths {
   export async function directories(directory: string, worktree: string) {
     return [
       Global.Path.config,
+      path.join(Global.Path.home, ".config", "devcode"),
       ...(!Flag.OPENCODE_DISABLE_PROJECT_CONFIG
         ? await Array.fromAsync(
             Filesystem.up({
-              targets: [".opencode"],
+              targets: [".opencode", ".devcode"],
               start: directory,
               stop: worktree,
             }),
@@ -26,7 +27,7 @@ export namespace ConfigPaths {
         : []),
       ...(await Array.fromAsync(
         Filesystem.up({
-          targets: [".opencode"],
+          targets: [".opencode", ".devcode"],
           start: Global.Path.home,
           stop: Global.Path.home,
         }),
