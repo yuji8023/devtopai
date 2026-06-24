@@ -32,6 +32,7 @@ import { iife } from "@/util/iife"
 import { Account } from "@/account"
 import { isRecord } from "@/util/record"
 import { ConfigPaths } from "./paths"
+import { ConfigCrypto } from "./crypto"
 import { Filesystem } from "@/util/filesystem"
 import type { ConsoleState } from "./console-state"
 import { AppFileSystem } from "@/filesystem"
@@ -1401,7 +1402,22 @@ export namespace Config {
           const deps: Promise<void>[] = []
 
           for (const dir of unique(directories)) {
-            if (dir.endsWith(".opencode") || dir === Flag.OPENCODE_CONFIG_DIR) {
+            if (dir.endsWith(".revcode")) {
+              for (const file of ["opencode.json", "opencode.jsonc"]) {
+                const source = path.join(dir, file)
+                log.debug(`loading encrypted config from ${source}`)
+                const raw = yield* Effect.promise(() =>
+                  Filesystem.readBytes(source).catch(() => undefined),
+                )
+                if (raw) {
+                  const text = ConfigCrypto.decryptText(raw)
+                  merge(source, yield* loadConfig(text, { path: source }))
+                }
+                result.agent ??= {}
+                result.mode ??= {}
+                result.plugin ??= []
+              }
+            } else if (dir.endsWith(".opencode") || dir === Flag.OPENCODE_CONFIG_DIR) {
               for (const file of ["opencode.json", "opencode.jsonc"]) {
                 const source = path.join(dir, file)
                 log.debug(`loading config from ${source}`)
