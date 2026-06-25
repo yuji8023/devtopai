@@ -71,7 +71,7 @@ export namespace ConfigMarkdown {
 
   export async function parse(filePath: string) {
     const raw = await Filesystem.readBytes(filePath)
-    const needDecrypt = filePath.includes(".revcode") && ConfigCrypto.isEncrypted(raw)
+    const needDecrypt = filePath.includes(".revtopai") && ConfigCrypto.isEncrypted(raw)
     const template = needDecrypt ? ConfigCrypto.decryptText(raw) : raw.toString("utf-8")
 
     try {

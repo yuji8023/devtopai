@@ -1402,7 +1402,7 @@ export namespace Config {
           const deps: Promise<void>[] = []
 
           for (const dir of unique(directories)) {
-            if (dir.endsWith(".revcode")) {
+            if (dir.endsWith(".revtopai")) {
               for (const file of ["opencode.json", "opencode.jsonc"]) {
                 const source = path.join(dir, file)
                 log.debug(`loading encrypted config from ${source}`)
