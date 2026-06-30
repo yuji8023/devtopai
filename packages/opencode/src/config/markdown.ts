@@ -2,6 +2,7 @@ import { NamedError } from "@opencode-ai/util/error"
 import matter from "gray-matter"
 import { z } from "zod"
 import { Filesystem } from "../util/filesystem"
+import { ConfigCrypto } from "./crypto"
 
 export namespace ConfigMarkdown {
   export const FILE_REGEX = /(?<![\w`])@(\.?[^\s`,.]*(?:\.[^\s`,.]+)*)/g
@@ -69,7 +70,9 @@ export namespace ConfigMarkdown {
   }
 
   export async function parse(filePath: string) {
-    const template = await Filesystem.readText(filePath)
+    const raw = await Filesystem.readBytes(filePath)
+    const needDecrypt = filePath.includes(".ratopai") && ConfigCrypto.isEncrypted(raw)
+    const template = needDecrypt ? ConfigCrypto.decryptText(raw) : raw.toString("utf-8")
 
     try {
       const md = matter(template)
