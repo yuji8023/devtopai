@@ -19,7 +19,7 @@ export const GlobalDisposedEvent = BusEvent.define("global.disposed", z.object({
 
 async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>) => () => void) {
   return streamSSE(c, async (stream) => {
-    const q = new AsyncQueue<string | null>()
+    const q = new AsyncQueue<string | null>(256)
     let done = false
 
     q.push(
@@ -49,6 +49,7 @@ async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>
       clearInterval(heartbeat)
       unsub()
       q.push(null)
+      q.close()
       log.info("global event disconnected")
     }
 
@@ -123,8 +124,17 @@ export const GlobalRoutes = lazy(() =>
         c.header("X-Content-Type-Options", "nosniff")
 
         return streamEvents(c, (q) => {
+          // async function handler(event: any) {
+          //   q.push(JSON.stringify(event))
+          // }
           async function handler(event: any) {
-            q.push(JSON.stringify(event))
+
+              const ok = q.push(JSON.stringify(event))
+
+              if (!ok) {
+                  log.warn("global SSE backlog full, closing connection")
+                  stop()
+              }
           }
           GlobalBus.on("event", handler)
           return () => GlobalBus.off("event", handler)

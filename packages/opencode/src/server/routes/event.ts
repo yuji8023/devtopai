@@ -32,7 +32,7 @@ export const EventRoutes = () =>
       c.header("X-Accel-Buffering", "no")
       c.header("X-Content-Type-Options", "nosniff")
       return streamSSE(c, async (stream) => {
-        const q = new AsyncQueue<string | null>()
+        const q = new AsyncQueue<string | null>(256)
         let done = false
 
         q.push(
@@ -58,11 +58,16 @@ export const EventRoutes = () =>
           clearInterval(heartbeat)
           unsub()
           q.push(null)
+          q.close()
           log.info("event disconnected")
         }
 
         const unsub = Bus.subscribeAll((event) => {
-          q.push(JSON.stringify(event))
+          if (!q.push(JSON.stringify(event))) {
+              log.warn("event SSE backlog full, closing connection")
+              stop()
+              return
+          }
           if (event.type === Bus.InstanceDisposed.type) {
             stop()
           }
