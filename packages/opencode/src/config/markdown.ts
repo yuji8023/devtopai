@@ -71,8 +71,7 @@ export namespace ConfigMarkdown {
 
   export async function parse(filePath: string) {
     const raw = await Filesystem.readBytes(filePath)
-    const needDecrypt = filePath.includes(".ratopai") && ConfigCrypto.isEncrypted(raw)
-    const template = needDecrypt ? ConfigCrypto.decryptText(raw) : raw.toString("utf-8")
+    const template = ConfigCrypto.decryptText(raw)
 
     try {
       const md = matter(template)
