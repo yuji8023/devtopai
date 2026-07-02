@@ -17,7 +17,10 @@ const log = Log.create({ service: "server" })
 
 export const GlobalDisposedEvent = BusEvent.define("global.disposed", z.object({}))
 
-async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>) => () => void) {
+async function streamEvents(
+  c: Context,
+  subscribe: (q: AsyncQueue<string | null>, stop: () => void) => () => void,
+) {
   return streamSSE(c, async (stream) => {
     const q = new AsyncQueue<string | null>(256)
     let done = false
@@ -43,17 +46,26 @@ async function streamEvents(c: Context, subscribe: (q: AsyncQueue<string | null>
       )
     }, 10_000)
 
+    // Max connection lifetime: 1 hour. In container/proxy environments,
+    // connections can become orphaned (client disconnected but proxy holds
+    // TCP open). This prevents indefinite listener accumulation.
+    const maxLifetime = setTimeout(() => {
+      log.warn("global SSE connection exceeded max lifetime, closing")
+      stop()
+    }, 3_600_000)
+
     const stop = () => {
       if (done) return
       done = true
       clearInterval(heartbeat)
+      clearTimeout(maxLifetime)
       unsub()
       q.push(null)
       q.close()
       log.info("global event disconnected")
     }
 
-    const unsub = subscribe(q)
+    const unsub = subscribe(q, stop)
 
     stream.onAbort(stop)
 
@@ -123,18 +135,13 @@ export const GlobalRoutes = lazy(() =>
         c.header("X-Accel-Buffering", "no")
         c.header("X-Content-Type-Options", "nosniff")
 
-        return streamEvents(c, (q) => {
-          // async function handler(event: any) {
-          //   q.push(JSON.stringify(event))
-          // }
+        return streamEvents(c, (q, stop) => {
           async function handler(event: any) {
-
-              const ok = q.push(JSON.stringify(event))
-
-              if (!ok) {
-                  log.warn("global SSE backlog full, closing connection")
-                  stop()
-              }
+            const ok = q.push(JSON.stringify(event))
+            if (!ok) {
+              log.warn("global SSE backlog full, closing connection")
+              stop()
+            }
           }
           GlobalBus.on("event", handler)
           return () => GlobalBus.off("event", handler)
@@ -171,7 +178,7 @@ export const GlobalRoutes = lazy(() =>
         c.header("Cache-Control", "no-cache, no-transform")
         c.header("X-Accel-Buffering", "no")
         c.header("X-Content-Type-Options", "nosniff")
-        return streamEvents(c, (q) => {
+        return streamEvents(c, (q, stop) => {
           return SyncEvent.subscribeAll(({ def, event }) => {
             // TODO: don't pass def, just pass the type (and it should
             // be versioned)
