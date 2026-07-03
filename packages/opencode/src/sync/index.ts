@@ -38,6 +38,7 @@ export namespace SyncEvent {
   let convertEvent: (type: string, event: Event["data"]) => Promise<Record<string, unknown>> | Record<string, unknown>
 
   const Bus = new EventEmitter<{ event: [{ def: Definition; event: Event }] }>()
+  Bus.setMaxListeners(100)
 
   export function reset() {
     frozen = false
