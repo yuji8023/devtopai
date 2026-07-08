@@ -267,7 +267,7 @@ if (Script.release) {
     if (!binaries[key]) continue
     const debDir = `dist/deb-${arch}`
     await $`mkdir -p ${debDir}/DEBIAN ${debDir}/usr/bin ${debDir}/usr/share/doc/ratopai`
-    await $`cp dist/${key}/bin/revtopai ${debDir}/usr/bin/ratopai`
+    await $`cp dist/${key}/bin/ratopai ${debDir}/usr/bin/ratopai`
     await $`chmod 755 ${debDir}/usr/bin/ratopai`
     const control = [
       "Package: ratopai",
