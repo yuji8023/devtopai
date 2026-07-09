@@ -283,7 +283,8 @@ if (Script.release) {
       "Homepage: https://github.com/anomalyco/opencode",
     ].join("\n")
     await Bun.write(`${debDir}/DEBIAN/control`, control + "\n")
-    await $`dpkg-deb --build ${debDir} dist/ratopai_${Script.version}_${arch}.deb`
+    await $`dpkg-deb --build -Zgzip ${debDir} dist/ratopai_${Script.version}_${arch}.deb`
+    console.log(`Built: ratopai_${Script.version}_${arch}.deb`)
     await $`rm -rf ${debDir}`
   }
 
