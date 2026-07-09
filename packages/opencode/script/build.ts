@@ -258,7 +258,37 @@ if (Script.release) {
       await $`zip -r ../../${key}.zip *`.cwd(`dist/${key}/bin`)
     }
   }
-  await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --clobber --repo ${process.env.GH_REPO}`.env(
+
+  const debMap: Record<string, string> = {
+    "revtopai-linux-x64": "amd64",
+    "revtopai-linux-arm64": "arm64",
+  }
+  for (const [key, arch] of Object.entries(debMap)) {
+    if (!binaries[key]) continue
+    const debDir = `dist/deb-${arch}`
+    await $`mkdir -p ${debDir}/DEBIAN ${debDir}/usr/bin ${debDir}/usr/share/doc/revtopai`
+    await $`cp dist/${key}/bin/revtopai ${debDir}/usr/bin/revtopai`
+    await $`chmod 755 ${debDir}/usr/bin/revtopai`
+    const control = [
+      "Package: revtopai",
+      `Version: ${Script.version}`,
+      `Architecture: ${arch}`,
+      "Maintainer: RevTopAI <dev@revtopai.com>",
+      "Description: AI-powered terminal coding agent",
+      " RevTopAI is an AI coding agent that runs in the terminal,",
+      " supporting Claude, OpenAI, Google, and local models.",
+      "Depends: libc6 (>= 2.28)",
+      "Section: devel",
+      "Priority: optional",
+      "Homepage: https://github.com/anomalyco/opencode",
+    ].join("\n")
+    await Bun.write(`${debDir}/DEBIAN/control`, control + "\n")
+    await $`dpkg-deb --build -Zgzip ${debDir} dist/revtopai_${Script.version}_${arch}.deb`
+    console.log(`Built: revtopai_${Script.version}_${arch}.deb`)
+    await $`rm -rf ${debDir}`
+  }
+
+  await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz ./dist/*.deb --clobber --repo ${process.env.GH_REPO}`.env(
     {
       ...process.env,
       GH_TOKEN: process.env.GH_TOKEN || "",
